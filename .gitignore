@@ -1,0 +1,27 @@
+# all raw data
+*.csv
+*.tsv
+
+# all temp files
+~*
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# file system
+**/.DS_Store
+
+# IDE
+.idea/
+
+# python notebooks
+*/.ipynb_checkpoints/*
+
+# python compile
+__pycache__
+*.pyc
+
+# binary files
+*.bin
