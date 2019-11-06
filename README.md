@@ -1,10 +1,10 @@
 # CAP4770Group7
 CAP4770 Final Project
 Kaggle Dataset: https://www.kaggle.com/c/jigsaw-unintended-bias-in-toxicity-classification
-Members: Yinghan Ma, Nicholas Miller, Yinchong Ma, Gregory DeCanio
+Members: Yinghan Ma, Nicholas Miller, Yichong Ma, Gregory DeCanio
 
 ## Visuals:
-### Method 1: Kevin 
+### Method 1: Yichong
 + Analysis 
 + Graphs 
 + Stats
@@ -13,7 +13,7 @@ Members: Yinghan Ma, Nicholas Miller, Yinchong Ma, Gregory DeCanio
 + Word2vec 
 
 ## Predictors:
-### Method 1: Yinghon 
+### Method 1: Yinghan 
 + Transformer (Bret)
 
 ### Method 2: Nick
