@@ -1,7 +1,10 @@
 import csv
+import re
+import random
 
 old_file = '../new_data.csv'
-new_file = '../clean_data.csv'
+new_file = '../train.csv'
+dev_file = '../dev.csv'
 
 rows = []
 
@@ -11,12 +14,20 @@ with open(old_file, 'r') as r:
     fields = next(csv_reader)
     
     for row in csv_reader:
-        useful = [row[2], row[1]]
+        useful = [re.sub('[\n\t\s+]+', ' ', row[2]).strip(), row[1]]
         rows.append(useful)
 
 with open(new_file, 'w') as w:
-    csv_writer = csv.writer(w)
-    csv_writer.writerow(['comment','target'])
-    
-    for row in rows:
-        csv_writer.writerow(row)
+    with open(dev_file, 'w') as d:
+        csv_writer = csv.writer(w, delimiter='\t')
+        dev_writer = csv.writer(d, delimiter='\t')
+
+        train = rows[:len(rows) - 3000]
+        print(len(train))
+        dev = rows[-3000:]
+        print(len(dev))
+        for row in train:
+            csv_writer.writerow(row)
+        
+        for row in dev:
+            dev_writer.writerow(row)
