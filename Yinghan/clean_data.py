@@ -3,8 +3,8 @@ import re
 import random
 
 old_file = '../new_data.csv'
-new_file = '../train.csv'
-dev_file = '../dev.csv'
+new_file = '../data/train.csv'
+dev_file = '../data/dev.csv'
 
 rows = []
 
