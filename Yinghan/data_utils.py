@@ -13,7 +13,7 @@ import time
 
 from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler, TensorDataset)
 
-logfile = './log/' + time.strftime("%Y-%m-%d-%H:%M:%S", time.localtime()) + '.log'
+logfile = '../log/' + time.strftime("%Y-%m-%d-%H:%M:%S", time.localtime()) + '.log'
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
                     level=logging.INFO,
@@ -33,25 +33,29 @@ class InputExample(object):
         self.label = label
 
 class InputFeatures(object):
-    def __init__(self, input_ids, attention_masks, segment_ids):
+    def __init__(self, input_ids, attention_masks, segment_ids, label):
         self.input_ids = input_ids
         self.attention_masks = attention_masks
         self.segment_ids = segment_ids
+        self.label = label
 
 def _readfile(filename):
     sentence = []
     score = []
+    pack = []
     with open(filename) as f:
         for line in f:
             splits = line.split('\t')
             sentence.append(splits[0])
-            score.append(1 if splits[1] >= 0.5 else 0)
+            score.append(1 if float(splits[1]) >= 0.5 else 0)
+            pack.append((splits[0], 1 if float(splits[1]) >= 0.5 else 0))
     
-    return (sentence, score)
+    return pack
 
 def convert_single_example(idx, example, max_seq_length, tokenizer, split_ratio=0.25):
     max_seq_length -= 2
     text = example.text
+    label = example.label
     tokens = tokenizer.tokenize(text)
     split_point = int(split_ratio * max_seq_length)
     
@@ -61,9 +65,10 @@ def convert_single_example(idx, example, max_seq_length, tokenizer, split_ratio=
     
     tokens.insert(0, '[CLS]')
     tokens.append('[SEP]')
-    input_ids = tokenizer.convert_tokens_to_ids()
+    input_ids = tokenizer.convert_tokens_to_ids(tokens)
     attention_mask = [1] * len(input_ids)
     
+    max_seq_length += 2
     while len(input_ids) < max_seq_length:
         input_ids.append(0)
         attention_mask.append(0)
@@ -82,20 +87,22 @@ def convert_single_example(idx, example, max_seq_length, tokenizer, split_ratio=
         logger.info('input_ids %s' % " ".join([str(x) for x in input_ids]))
         logger.info('masks %s' % " ".join([str(x) for x in attention_mask]))
         logger.info('segment_ids %s' % " ".join([str(x) for x in segment_ids]))
+        logger.info('label %d', label)
 
     single_feature = InputFeatures(
         input_ids,
         attention_mask,
-        segment_ids
+        segment_ids,
+        label
     )
     
     return single_feature
 
-def convert_examples_to_features(args, examples, max_seq_length, tokenizer):
+def convert_examples_to_features(args, examples, tokenizer):
     features = []
     
     for i, example in enumerate(examples):
-        feature = convert_single_example(i, examples, max_seq_length, tokenizer, args.split_ratio)
+        feature = convert_single_example(i, example, args.max_seq_length, tokenizer, args.split_ratio)
         features.append(feature)
     
     return features
@@ -124,7 +131,7 @@ class ClfProcessor(DataProcessor):
     def get_train_examples(self, data_dir):
         """See base class."""
         return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, 'train.csv'), "train"))
+            self._read_tsv(os.path.join(data_dir, 'train.csv')), "train")
     
     def get_dev_examples(self, data_dir):
         """See base class."""
@@ -141,14 +148,15 @@ class ClfProcessor(DataProcessor):
             
     def _create_examples(self,lines,set_type):
         examples = []
+        labels = []
         # for debug purpose
         # lines = random.sample(lines, int(len(lines) * 0.05))
-        for i, (sentence,label) in enumerate(lines):
+        for i, (sentence, label) in enumerate(lines):
             guid = "%s-%s" % (set_type, i)
             text_a = sentence
-            label = label
+            labels.append(label)
             examples.append(InputExample(guid=guid,text=text_a, label=label))
-        return examples
+        return examples, labels
     
     
 if __name__ == '__main__':
