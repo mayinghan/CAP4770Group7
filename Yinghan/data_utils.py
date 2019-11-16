@@ -150,7 +150,7 @@ class ClfProcessor(DataProcessor):
         examples = []
         labels = []
         # for debug purpose
-        # lines = random.sample(lines, int(len(lines) * 0.05))
+        # lines = random.sample(lines, int(len(lines) * 0.2))
         for i, (sentence, label) in enumerate(lines):
             guid = "%s-%s" % (set_type, i)
             text_a = sentence

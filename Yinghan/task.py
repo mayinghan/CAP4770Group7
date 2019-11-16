@@ -41,7 +41,7 @@ def set_seed(args):
 def to_list(tensor):
     return tensor.detach().cpu().tolist()
 
-def train(args, train_dataset, model, tokenizer):
+def train(args, train_dataset, dev_dataset, model, tokenizer):
     train_sampler = RandomSampler(train_dataset)
     train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
 
@@ -81,14 +81,14 @@ def train(args, train_dataset, model, tokenizer):
         for step, batch in enumerate(epoch_iteration):
             model.train()
             batch = tuple(t.to(args.device) for t in batch)
-            
+
             inputs = {
                 'input_ids': batch[0],
                 'attention_mask': batch[1],
                 'segment_ids': batch[2]
             }
             y_true = batch[3].view(-1, 1).float()
-            
+
             logits = model(**inputs)
             # print(logits.type())
             # print(y_true.type())
@@ -97,7 +97,7 @@ def train(args, train_dataset, model, tokenizer):
 
             if args.gradient_accumulation_steps > 1:
                 loss = loss / args.gradient_accumulation_steps
-            
+
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
 
@@ -108,21 +108,65 @@ def train(args, train_dataset, model, tokenizer):
                 scheduler.step()  # Update learning rate schedule
                 model.zero_grad()
                 global_step += 1
-        
+
+                if global_step % args.dev_step == 0:
+                    curr_f1 = evaluate(args, dev_dataset, model, tokenizer, mode='dev')
+                    logger.info(' current f1: %f', curr_f1)
+                    if curr_f1 > best_f1:
+                        best_f1 = curr_f1
+                        logger.info(' best f1: %f', best_f1)
+                        output_file = os.path.join(args.output_dir, args.task_name + 'best_model.bin')
+                        model_to_save = model.module if hasattr(model, 'module') else model
+                        torch.save(model_to_save, output_file)
+
         logger.info('Training loss current epoch: %f', epoch_loss)
-    
+
     return global_step, tr_loss / global_step
 
 def evaluate(args, test_dataset, model, tokenizer, mode='test'):
-    pass
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
+
+    eval_sampler = SequentialSampler(test_dataset)
+    eval_dataloader = DataLoader(test_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size)
+
+    logger.info('******* Running Evaluation ********')
+    logger.info(' Num examples = %d', len(test_dataset))
+    logger.info(' Batch size = %d', args.eval_batch_size)
+
+    y_true = []
+    y_pred = []
+    for i, batch in tqdm(eval_dataloader, desc='Iter'):
+        model.eval()
+        batch = tuple(t.to(args.device) for t in batch)
+
+        inputs = {
+            'input_ids': batch[0],
+            'attention_mask': batch[1],
+            'segment_ids': batch[2]
+        }
+        yt = batch[3].view(-1, 1).to('cpu').numpy()
+        with torch.no_grad():
+            logits = model(**inputs)
+        
+        logits.detach().cpu().numpy()
+        for i, label in enumerate(yt):
+            y_true.append(label)
+            y_pred.append(1 if logits[i] >= 0.5 else 0)
+        
+    print(y_true[:15])
+    print(y_pred[:15])
+    f1 = metrics.f1_score(y_true, y_pred)
+
+    return f1
 
 def load_and_cache_examples(args, processor, tokenizer, evaluate=False, dev=False, output_examples=False):
     cached_features_file = os.path.join(args.data_dir, 'cached_{}_{}_{}'.format(
-        'eval' if evaluate else 'train',
+        'eval' if evaluate else 'dev' if dev else 'train',
         list(filter(None, args.bert_model.split('/'))).pop(),
         str(args.max_seq_length)
     ))
-    
+
     # TODO: refactor the Example structure, save both Example and labels to cache
     if os.path.exists(cached_features_file) and not args.overwrite_cache and not output_examples:
         logger.info("Loading features from cached file %s", cached_features_file)
@@ -131,11 +175,12 @@ def load_and_cache_examples(args, processor, tokenizer, evaluate=False, dev=Fals
         logger.info("Creating features from dataset file at %s", args.data_dir)
         # label_list = processor.get_labels()
 
-        examples, labels = processor.get_test_examples(args.data_dir) if evaluate else processor.get_train_examples(args.data_dir)
+        examples, labels = processor.get_test_examples(args.data_dir) if evaluate else processor.get_dev_examples(args.data_dir) \
+                                            if dev else processor.get_train_examples(args.data_dir) 
         features = convert_examples_to_features(args,
-                                                examples, 
+                                                examples,
                                                 tokenizer)
-        
+
         logger.info('saving features into cache file %s', cached_features_file)
         torch.save(features, cached_features_file)
 
@@ -153,7 +198,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     # required parameters
-    parser.add_argument('--data_dir', 
+    parser.add_argument('--data_dir',
                         default=None,
                         type=str,
                         required=True,
@@ -171,9 +216,9 @@ def main():
                         default=None,
                         type=str,
                         required=True)
-    
+
     # Other optional parameters
-    parser.add_argument("--model_type", 
+    parser.add_argument("--model_type",
                         default='bert')
     parser.add_argument("--split_ratio",
                         default=0.25,
@@ -221,10 +266,10 @@ def main():
     parser.add_argument("--no_cuda",
                         action='store_true',
                         help="Whether not to use CUDA when available")
-    parser.add_argument('--overwrite_output_dir', 
+    parser.add_argument('--overwrite_output_dir',
                         action='store_true',
                         help="Overwrite the content of the output directory")
-    parser.add_argument('--overwrite_cache', 
+    parser.add_argument('--overwrite_cache',
                         action='store_true',
                         help="Overwrite the cached training and evaluation sets")
     parser.add_argument("--local_rank",
@@ -269,7 +314,7 @@ def main():
 
     # Setup CUDA
     device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
-    
+
     args.device = device
 
     # Set seed
@@ -291,7 +336,7 @@ def main():
         weight_file = weightpath.WWM_WEIGHTS
     else:
         raise ValueError('Currently only support Bert Base Cased(bert-base-cased) and Whole Word Masking Cased(wwm)')
-    
+
     # prepare the pretrained model and tokenizer
     tokenizer = BertTokenizer(vocab_file=vocab_file, do_lower_case=False)
     config = BertConfig.from_pretrained(config_file)
@@ -302,7 +347,8 @@ def main():
 
     if args.do_train:
         train_dataset = TensorDataset(*load_and_cache_examples(args, processor, tokenizer))
-        global_step, tr_loss = train(args, train_dataset, model, tokenizer)
+        dev_dataset = TensorDataset(*load_and_cache_examples(args, processor, tokenizer, dev=True))
+        global_step, tr_loss = train(args, train_dataset, dev_dataset, model, tokenizer)
         logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
 
 if __name__ == '__main__':
