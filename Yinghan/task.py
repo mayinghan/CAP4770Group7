@@ -115,10 +115,10 @@ def train(args, train_dataset, dev_dataset, model, tokenizer):
                     if curr_f1 > best_f1:
                         best_f1 = curr_f1
                         logger.info(' best f1: %f', best_f1)
-                        output_file = os.path.join(args.output_dir, args.task_name + 'best_model.bin')
+                        output_file = os.path.join(args.output_dir, str(args.max_seq_length) + '_' + str(args.train_batch_size) + '_' + args.task + 'best_model.bin')
                         model_to_save = model.module if hasattr(model, 'module') else model
                         torch.save(model_to_save, output_file)
-
+        
         logger.info('Training loss current epoch: %f', epoch_loss)
 
     return global_step, tr_loss / global_step
@@ -136,7 +136,7 @@ def evaluate(args, test_dataset, model, tokenizer, mode='test'):
 
     y_true = []
     y_pred = []
-    for i, batch in tqdm(eval_dataloader, desc='Iter'):
+    for batch in tqdm(eval_dataloader, desc='Iter'):
         model.eval()
         batch = tuple(t.to(args.device) for t in batch)
 
@@ -151,12 +151,13 @@ def evaluate(args, test_dataset, model, tokenizer, mode='test'):
         
         logits.detach().cpu().numpy()
         for i, label in enumerate(yt):
-            y_true.append(label)
+            y_true.append(label[0])
             y_pred.append(1 if logits[i] >= 0.5 else 0)
         
     print(y_true[:15])
     print(y_pred[:15])
-    f1 = metrics.f1_score(y_true, y_pred)
+    logger.info(' Accuracy score: %f', metrics.accuracy_score(y_true, y_pred))
+    f1 = metrics.f1_score(y_true, y_pred, average='binary')
 
     return f1
 
@@ -303,7 +304,7 @@ def main():
                              "0 (default value): dynamic loss scaling.\n"
                              "Positive power of 2: static loss scaling value.\n")
     parser.add_argument('--dev_step',
-                        type=float, default=1000)
+                        type=float, default=500)
     parser.add_argument('--server_ip', type=str, default='', help="Can be used for distant debugging.")
     parser.add_argument('--server_port', type=str, default='', help="Can be used for distant debugging.")
     args = parser.parse_args()
@@ -350,6 +351,13 @@ def main():
         dev_dataset = TensorDataset(*load_and_cache_examples(args, processor, tokenizer, dev=True))
         global_step, tr_loss = train(args, train_dataset, dev_dataset, model, tokenizer)
         logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
+
+    if args.do_eval:
+        model = torch.load(os.path.join(args.output_dir, str(args.max_seq_length) + '_' + str(args.train_batch_size) + '_' + args.task + 'best_model.bin'))
+        model.to(args.device)
+        test_dataset = TensorDataset(*load_and_cache_examples(args, processor, tokenizer, evaluate=True))
+        f1 = evaluate(args, test_dataset, model, tokenizer)
+        logger.info(" f1: %f", f1)
 
 if __name__ == '__main__':
     main()

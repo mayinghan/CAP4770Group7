@@ -25,3 +25,6 @@ __pycache__
 
 # binary files
 *.bin
+/data
+/output
+/log
