@@ -12,7 +12,7 @@ Members: Yinghan Ma, Nicholas Miller, Yichong Ma, Gregory DeCanio
 - #### `TF_IDF Text Classification.ipynb` - Jupyter Notebook where project code is written. Performs data cleaning (stop word and character removal). Uses TF_IDF and simple classification methods
 - #### `README.md` - Contains links to websites that were used as reference when coding
 #### `Nicholas`
-- #### `README.md` - Contains link to *Google Colab* where are project code is written
+- #### `README.md` - Contains link to *Google Colab* where project code is written
 #### `Yichong`
 - #### `__pycache__`
 	- #### `wordcloud.cpython-37.pyc`  
@@ -38,7 +38,7 @@ Members: Yinghan Ma, Nicholas Miller, Yichong Ma, Gregory DeCanio
 #### `.gitignore` - Tells git which files to ignore
 #### `README.md` - This file! Describes problem, file structure, and what each group member is doing
 #### `new_data.csv` - Sampled data of 115,000 comments from original 1.8+ million
-#### `requirement.txt` - 
+#### `requirement.txt`
 
 ## Visuals:
 ### Method 1: Yichong
