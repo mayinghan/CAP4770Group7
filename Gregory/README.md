@@ -1,4 +1,5 @@
-# Initial Readme for folder
+# Links to Resources
+These resources were helpful in creating code to perform classifcation of the comment text data. In addition to these resources, previous in-class labs were used.
 
 Machine Learning, NLP: Text Classification using scikit-learn, python and NLTK
 https://towardsdatascience.com/machine-learning-nlp-text-classification-using-scikit-learn-python-and-nltk-c52b92a7c73a
