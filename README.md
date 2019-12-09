@@ -8,7 +8,7 @@ Members: Yinghan Ma, Nicholas Miller, Yichong Ma, Gregory DeCanio
 
 ## File Structure
 #### `Gregory`
-- #### `LSTM as Classifer Metrics.ipynb` - Jupyter Notebooke where code was written to output classifier metrics of LSTM, assuming we convert the regression values from the original LSTM to their appropriate toxic/non-toxic classification
+- #### `LSTM as Classifer Metrics.ipynb` - Jupyter Notebook where code was written to output classifier metrics of LSTM, assuming we convert the regression values from the original LSTM to their appropriate toxic/non-toxic classification
 - #### `TF_IDF Text Classification.ipynb` - Jupyter Notebook where project code is written. Performs data cleaning (stop word and character removal). Uses TF_IDF and simple classification methods
 - #### `README.md` - Contains links to websites that were used as reference when coding
 #### `Nicholas`
